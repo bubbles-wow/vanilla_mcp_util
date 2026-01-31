@@ -35,6 +35,8 @@ def decrypt_data(origin_content: bytes) -> bytes:
         # match encrypted mcs
         cipher = NlsCipher()
         zlib_content = cipher.decrypt(origin_content)
+    else:
+        return origin_content
     
     if len(zlib_content) > 2:
         h1, h2 = zlib_content[0], zlib_content[1]

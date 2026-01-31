@@ -202,20 +202,20 @@ class McsMarshal:
             }
         elif tag == 111:  # 'o'
             obj = {
-                'argcount': self.r_int(),
                 'nlocals': self.r_int(),
-                'stacksize': self.r_int(),
                 'flags': self.r_int(),
-                'code': self.r_object(),
                 'consts': self.r_object(),
-                'names': self.r_object(),
+                'stacksize': self.r_int(),
                 'varnames': self.r_object(),
-                'freevars': self.r_object(),
+                'argcount': self.r_int(),
                 'cellvars': self.r_object(),
-                'filename': self.r_object(),
+                'names': self.r_object(),
+                'freevars': self.r_object(),
                 'name': self.r_object(),
+                'code': self.r_object(),
                 'firstlineno': self.r_int(),
                 'lnotab': self.r_object(),
-                'magic': self.r_int()
+                'magic': self.r_int(),
+                'filename': self.r_object()
             }
         return obj

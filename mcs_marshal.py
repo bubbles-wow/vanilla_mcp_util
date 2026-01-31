@@ -180,7 +180,7 @@ class McsMarshal:
                 'name': self.r_object(),
                 'firstlineno': self.r_int(),
                 'lnotab': self.r_object(),
-                'magic': 0
+                'magic': None
             }
         elif tag == 77:  # 'M'
             obj = {

@@ -49,6 +49,7 @@ def decrypt_data(origin_content: bytes) -> bytes:
                 if final_content[:4] == b'bcbc':
                     # Special handling for bcbc files
                     final_content = bytes([b ^ 0x9C for b in final_content[:130]]) + final_content[130:]
+                if origin_content[0] != 0x35:
                     # Reverse the content
                     final_content = final_content[::-1]
                 return final_content

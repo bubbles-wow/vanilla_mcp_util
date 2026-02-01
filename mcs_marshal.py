@@ -88,7 +88,7 @@ class McsMarshal:
         tag = self.r_byte()
         if tag == 48:
             return _NULL
-        if tag == 78:
+        if tag in (78, 110):
             return None
         if tag == 84:
             return True

@@ -4,6 +4,9 @@ from typing import Any
 
 _NULL = object()
 
+class StopIterationException(Exception):
+    pass
+
 class McsRC4:
     def __init__(self, key: bytes):
         self.key = key
@@ -52,12 +55,14 @@ class McsMarshal:
 
     def r_int(self) -> int:
         if self.pos + 4 > len(self.data):
-            remaining = self.data[self.pos:]
             val = 0
-            for i, b in enumerate(remaining):
-                val |= b << (i * 8)
-            self.pos = len(self.data)
-            return val | 0xFF000000
+            for i in range(4):
+                if self.pos < len(self.data):
+                    val |= self.data[self.pos] << (i * 8)
+                    self.pos += 1
+                else:
+                    val |= 0xFF << (i * 8)
+            return struct.unpack('<i', struct.pack('<I', val & 0xFFFFFFFF))[0]
         val = struct.unpack('<i', self.data[self.pos:self.pos+4])[0]
         self.pos += 4
         return val
@@ -86,51 +91,63 @@ class McsMarshal:
 
     def r_object(self) -> Any:
         tag = self.r_byte()
-        if tag == 48:
+        
+        # simple singletons and constants
+        if tag == 48: # '0'
             return _NULL
-        if tag in (78, 110):
+        if tag in (78, 110): # 'N', 'n'
             return None
-        if tag == 84:
+        if tag == 84: # 'T'
             return True
-        if tag == 70:
+        if tag == 70: # 'F'
             return False
-        if tag == 46:
+        if tag == 46: # '.'
             return Ellipsis
-        if tag == 105:
+        if tag == 83: # 'S' - StopIteration
+            return StopIterationException
+        
+        # numeric types
+        if tag == 105: # 'i'
             return self.r_int()
-        if tag == 73:
+        if tag == 73: # 'I' - 64-bit int
             v = struct.unpack('<q', self.data[self.pos:self.pos+8])[0]
             self.pos += 8
             return v
-        if tag in (108, 76):
+        if tag in (108, 76): # 'l', 'L'
             return self.r_long()
-        if tag == 102:
+        if tag == 102: # 'f'
             sz = self.r_byte()
             return float(self.r_string(sz))
-        if tag == 103:
+        if tag == 103: # 'g'
             v = struct.unpack('<d', self.data[self.pos:self.pos+8])[0]
             self.pos += 8
             return v
-        if tag == 115:
+            
+        # strings and references
+        if tag == 115: # 's'
             return self.r_string()
-        if tag == 116:
+        if tag == 116: # 't' - Interned
             s = self.r_string()
             self.refs.append(s)
             return s
-        if tag == 82:
+        if tag == 117: # 'u' - Unicode
+            return self.r_string().decode('utf-8', 'ignore')
+        if tag == 82: # 'R' - Reference
             idx = self.r_int()
             return self.refs[idx] if idx < len(self.refs) else None
-        if tag == 40:
+            
+        # containers
+        if tag == 40: # '(' - Tuple
             n = self.r_int()
             return tuple(self.r_object() for _ in range(n))
-        if tag == 91:
+        if tag == 91: # '[' - List
             n = self.r_int()
             return [self.r_object() for _ in range(n)]
-        if tag in (60, 62):
+        if tag in (60, 62): # '<', '>' - Set/FrozenSet
             n = self.r_int()
             items = [self.r_object() for _ in range(n)]
             return frozenset(items) if tag == 62 else set(items)
-        if tag == 123:
+        if tag == 123: # '{' - Dict
             d = {}
             while True:
                 k = self.r_object()
@@ -138,13 +155,15 @@ class McsMarshal:
                     break
                 d[k] = self.r_object()
             return d
-        if tag in (109, 49):
+            
+        # encrypted or obfuscated types
+        if tag in (109, 49): # 'm', '1' - RC4
             return McsRC4(self.RC4_KEY).decrypt(self.r_string())
-        if tag == 98:
+        if tag == 98: # 'b' - RC4 with reference
             dec = McsRC4(self.RC4_KEY).decrypt(self.r_string())
             self.refs.append(dec)
             return dec
-        if tag in (8, 15):
+        if tag in (8, 14, 15): # XOR 0x8D 
             raw = bytearray(self.r_string())
             for i in range(len(raw)):
                 raw[i] ^= 0x8D
@@ -152,16 +171,11 @@ class McsMarshal:
             if tag == 15:
                 self.refs.append(res)
             return res
-        if tag == 14:
-            raw = bytearray(self.r_string())
-            for i in range(len(raw)):
-                raw[i] ^= 0x8D
-            return bytes(raw)
-        if tag in (99, 77, 111):
+
+        if tag in (99, 77, 111): # 'c', 'M', 'o'
             return self.r_code_object(tag)
-        if tag == ord('u'):
-            return self.r_string().decode('utf-8', 'ignore')
-        raise ValueError(f"Unknown Tag: {tag} at {self.pos-1}")
+            
+        raise ValueError(f"Unknown Tag: {tag} ({chr(tag) if 32 <= tag <= 126 else '?'}) at {self.pos-1}")
 
     def r_code_object(self, tag: int) -> dict:
         if tag == 99:  # 'c'

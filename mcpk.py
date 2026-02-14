@@ -290,8 +290,12 @@ def unpack_mcpk(file_path: str, output_dir: str) -> None:
             f.seek(data_base_offset + dir_map[0]["files"][contents_json_hash]["offset"])
             c_size = dir_map[0]["files"][contents_json_hash]["c_size"]
             c_data = f.read(c_size)
+            head_magic = c_data[:2]
             try:
-                contents_data = zlib.decompress(c_data)
+                if head_magic == b'\x78\x9C' or head_magic == b'\x78\xDA':
+                    contents_data = zlib.decompress(c_data)
+                else:
+                    contents_data = c_data
             except:
                 contents_data = c_data
             
@@ -356,8 +360,12 @@ def unpack_mcpk(file_path: str, output_dir: str) -> None:
                 c_size = file_info["c_size"]
                 u_size = file_info["u_size"]
                 c_data = f.read(c_size)
+                head_magic = c_data[:2]
                 try:
-                    u_data = zlib.decompress(c_data)
+                    if head_magic == b'\x78\x9C' or head_magic == b'\x78\xDA':
+                        u_data = zlib.decompress(c_data)
+                    else:
+                        u_data = c_data
                     out_path = os.path.join(output_dir, norm_path)
                     os.makedirs(os.path.dirname(out_path), exist_ok=True)
                     with open(out_path, 'wb') as out_f:
@@ -380,10 +388,11 @@ def unpack_mcpk(file_path: str, output_dir: str) -> None:
                     pos = f.tell()
                     f.seek(data_base_offset + f_offset)
                     c_data = f.read(c_size)
+                    head_magic = c_data[:2]
                     try:
-                        if not is_script_mcp:
+                        if head_magic == b'\x78\x9C' or head_magic == b'\x78\xDA':
+                            u_data = zlib.decompress(c_data)
                             with open(os.path.join(out_dir, name), 'wb') as out_f:
-                                u_data = zlib.decompress(c_data)
                                 out_f.write(u_data)
                         else:
                             # decrypt for get filename

@@ -31,7 +31,7 @@ def decrypt_data(origin_content: bytes) -> bytes:
         for i in range(4):
             header[i] ^= mcpk[i]
         zlib_content = header + origin_content[4:]
-    elif origin_content[:2] == b'\xe5\x1f':
+    elif origin_content[:2] == b'\xE5\x1F':
         # match encrypted mcs
         cipher = NlsCipher()
         zlib_content = cipher.decrypt(origin_content)
@@ -46,10 +46,8 @@ def decrypt_data(origin_content: bytes) -> bytes:
                 final_content = zlib.decompress(zlib_content)
                 
                 # Inspect Decompressed Content
-                if final_content[:4] == b'bcbc':
-                    # Special handling for bcbc files
+                if origin_content[:2] == b'\xE5\x1F':
                     final_content = bytes([b ^ 0x9C for b in final_content[:130]]) + final_content[130:]
-                if origin_content[0] != 0x35:
                     # Reverse the content
                     final_content = final_content[::-1]
                 return final_content

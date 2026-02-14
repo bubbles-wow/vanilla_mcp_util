@@ -18,13 +18,14 @@ class FakeFileObject(TextIOBase):
 
 def transform_code(mcs_obj: dict) -> bytes:
     magic = mcs_obj['magic']
-    op_map = get_opcode_map(magic)
+    version = mcs_obj.get('version', 1)  # default to version 1 if not present
+    op_map = get_opcode_map(magic, version)
     mcs_code = bytearray(mcs_obj['code'])
     new_code = bytearray()
     i = 0
     while i < len(mcs_code):
         opcode = mcs_code[i]
-        if opcode >= 93:
+        if opcode >= 90:
             if i + 2 < len(mcs_code):
                 arg = mcs_code[i+1] | (mcs_code[i+2] << 8)
                 step = 3

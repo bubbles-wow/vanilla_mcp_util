@@ -34,7 +34,8 @@ class McsRC4:
         return bytes(data)
 
 class McsMarshal:
-    RC4_KEY = b"\x8d\x06\xe8\xc8\xb7\xd7\xb7\x28\x46\x51\xae\x04"
+    RC4_KEY_V2 = b"\xa7\x0d\x37\x7a"
+    RC4_KEY_V3 = b"\x8d\x06\xe8\xc8\xb7\xd7\xb7\x28\x46\x51\xae\x04"
 
     def __init__(self, data: bytes):
         self.data = data
@@ -157,10 +158,16 @@ class McsMarshal:
             return d
             
         # encrypted or obfuscated types
-        if tag in (109, 49): # 'm', '1' - RC4
-            return McsRC4(self.RC4_KEY).decrypt(self.r_string())
+        if tag in (109, 49, 23, 26, 29): # 'm', '1', 23, 26, 29 - RC4
+            key = self.RC4_KEY_V2 if tag in (23, 26, 29) else self.RC4_KEY_V3
+            dec = McsRC4(key).decrypt(self.r_string())
+            if tag == 26: # interned or common string refs
+                self.refs.append(dec)
+            if tag == 29: # unicode
+                return dec.decode('utf-8', 'ignore')
+            return dec
         if tag == 98: # 'b' - RC4 with reference
-            dec = McsRC4(self.RC4_KEY).decrypt(self.r_string())
+            dec = McsRC4(self.RC4_KEY_V3).decrypt(self.r_string())
             self.refs.append(dec)
             return dec
         if tag in (8, 14, 15): # XOR 0x8D 
@@ -172,12 +179,15 @@ class McsMarshal:
                 self.refs.append(res)
             return res
 
-        if tag in (99, 77, 111): # 'c', 'M', 'o'
+        if tag in (99, 77, 111, 97): # 'c', 'M', 'o', 'a'
             return self.r_code_object(tag)
             
         raise ValueError(f"Unknown Tag: {tag} ({chr(tag) if 32 <= tag <= 126 else '?'}) at {self.pos-1}")
 
     def r_code_object(self, tag: int) -> dict:
+        obj = {}
+        # add an extra 'version' field to identify the mcs variant, 
+        # not build-in r_object field
         if tag == 99:  # 'c'
             obj = {
                 'argcount': self.r_int(),
@@ -194,7 +204,8 @@ class McsMarshal:
                 'name': self.r_object(),
                 'firstlineno': self.r_int(),
                 'lnotab': self.r_object(),
-                'magic': None
+                'magic': None,
+                'version': 1
             }
         elif tag == 77:  # 'M'
             obj = {
@@ -212,7 +223,8 @@ class McsMarshal:
                 'flags': self.r_int(),
                 'filename': self.r_object(),
                 'nlocals': self.r_int(),
-                'magic': self.r_int()
+                'magic': self.r_int(),
+                'version': 3
             }
         elif tag == 111:  # 'o'
             obj = {
@@ -230,6 +242,26 @@ class McsMarshal:
                 'firstlineno': self.r_int(),
                 'lnotab': self.r_object(),
                 'magic': self.r_int(),
-                'filename': self.r_object()
+                'filename': self.r_object(),
+                'version': 3
+            }
+        elif tag == 97:  # 'a'
+            obj = {
+                'lnotab': self.r_object(),
+                'varnames': self.r_object(),
+                'flags': self.r_int(),
+                'freevars': self.r_object(),
+                'cellvars': self.r_object(),
+                'filename': self.r_object(),
+                'stacksize': self.r_int(),
+                'firstlineno': self.r_int(),
+                'consts': self.r_object(),
+                'argcount': self.r_int(),
+                'code': self.r_object(),
+                'nlocals': self.r_int(),
+                'name': self.r_object(),
+                'names': self.r_object(),
+                'magic': self.r_int(),
+                'version': 2
             }
         return obj

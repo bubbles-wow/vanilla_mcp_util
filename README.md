@@ -23,9 +23,12 @@ Python 3.8 or higher.
 ## About MCS
 - MCS is a custom encrypted format for python bytecode files (.pyc).
 - About 3 variants:
-    1. Old version of game's build-in script pack. It has standard python codeobject, and non-encrypted str storage. Only opcode remapped.
-    2. New version of game's build-in script pack. It has changed the sort of codeobject fields, and str storage is encrypted with XOR or RC4. With opcode remapped too.
-    3. New version of game's dlc script pack (the name is like `<mod_name>.mcp`, in `behavior_packs`). Similar to variant 2, but with different opcode remap table.
+    1. V1 (1.0-2.1)  
+    It has standard python codeobject, and non-encrypted str storage. Only opcode remapped.
+    2. V2 (2.2-2.6)  
+    It has changed the sort of codeobject fields, and str storage is encrypted with XOR or RC4. With opcode remapped too. It adds a `magic` number in code object to identify the game's build-in scripts and modders' scripts.
+    3. V3 (2.7+)  
+    Similar to variant 2, but with different RC4 decrypt key, code object, and opcode remap table.
 
 ## Disclaimer
 - This tool is intended for educational purposes only. Use of this tool may violate software licenses or terms of service. 

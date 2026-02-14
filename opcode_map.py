@@ -2,7 +2,7 @@
 # Opcode Maps (MCS Variant -> Standard) (not complete)
 # -----------------------------------------------------------------------------
 
-OP_MAP_A = {
+OP_MAP_GAME_V3 = {
     0x00: 9,
     0x01: 5,
     0x02: 76,
@@ -22,7 +22,7 @@ OP_MAP_A = {
     0x14: 54,
     0x15: 20,
     0x17: 71,
-    0x18: 63,
+    0x18: 57,
     0x1A: 81,
     0x1B: 30,
     0x1C: 31,
@@ -41,6 +41,7 @@ OP_MAP_A = {
     0x36: 24,
     0x3B: 62,
     0x3E: 50,
+    0x3F: 51,
     0x43: 89,
     0x44: 79,
     0x46: 11,
@@ -108,7 +109,7 @@ OP_MAP_A = {
     0xFE: 92
 }
 
-OP_MAP_B = {
+OP_MAP_MOD_V3 = {
     0x01: 83,
     0x02: 23,
     0x04: 25,
@@ -193,7 +194,7 @@ OP_MAP_B = {
     0xF2: 112
 }
 
-OP_MAP_C = {
+OP_MAP_DEFAULT = {
     0x00: 74,
     0x01: 15,
     0x02: 62,
@@ -211,6 +212,7 @@ OP_MAP_C = {
     0x11: 85,
     0x12: 73,
     0x14: 50,
+    0x15: 51,
     0x17: 133,
     0x1A: 60,
     0x1B: 71,
@@ -244,7 +246,7 @@ OP_MAP_C = {
     0x41: 88,
     0x43: 61,
     0x45: 64,
-    0x46: 55,
+    0x46: 57,
     0x47: 30,
     0x48: 31,
     0x49: 32,
@@ -261,6 +263,7 @@ OP_MAP_C = {
     0x64: 93,
     0x65: 143,
     0x66: 125,
+    0x6B: 133,
     0x72: 90,
     0x74: 91,
     0x77: 131,
@@ -308,8 +311,24 @@ OP_MAP_C = {
     0xFC: 103
 }
 
-VERSION_MAP = {-901139953: OP_MAP_A, -1135027243: OP_MAP_B}
+OP_MAP_GAME_V2 = {
+    
+}
+
+OP_MAP_MOD_V2 = {
+    
+}
+
+VERSION_MAP_V2 = {-901139953: OP_MAP_GAME_V2, -1135027243: OP_MAP_MOD_V2}
+VERSION_MAP_V3 = {-901139953: OP_MAP_GAME_V3, -1135027243: OP_MAP_MOD_V3}
 
 
-def get_opcode_map(magic: int) -> dict:
-    return VERSION_MAP.get(magic, OP_MAP_C)
+def get_opcode_map(magic: int, version: int) -> dict:
+    if version == 1: # V1 code object
+         return OP_MAP_DEFAULT
+    elif version == 2: # V2 code object
+        return VERSION_MAP_V2.get(magic, OP_MAP_DEFAULT)
+    elif version == 3: # V3 code object
+        return VERSION_MAP_V3.get(magic, OP_MAP_DEFAULT)
+    else:
+        return OP_MAP_DEFAULT

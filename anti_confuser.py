@@ -19,13 +19,13 @@ class FakeFileObject(TextIOBase):
 def transform_code(mcs_obj: dict) -> bytes:
     magic = mcs_obj['magic']
     version = mcs_obj.get('version', 1)  # default to version 1 if not present
-    op_map = get_opcode_map(magic, version)
+    op_map = get_opcode_map(version)
     mcs_code = bytearray(mcs_obj['code'])
     new_code = bytearray()
     i = 0
     while i < len(mcs_code):
         opcode = mcs_code[i]
-        if opcode >= 90:
+        if opcode >= 93:
             if i + 2 < len(mcs_code):
                 arg = mcs_code[i+1] | (mcs_code[i+2] << 8)
                 step = 3
@@ -47,7 +47,7 @@ def transform_code(mcs_obj: dict) -> bytes:
         if isinstance(obj_name, bytes):
             obj_name = obj_name.decode('utf-8', 'ignore')
         a_val = arg if arg is not None else 0
-        print(f"DEBUG: {obj_name} magic {magic} | offset {i:3} | mcs_op 0x{opcode:02x} ({opcode:3}) | arg {a_val:3} -> std_op {std_op:3}")
+        print(f"DEBUG: V{version} | {obj_name} | magic {magic} | offset {i:3} | mcs_op 0x{opcode:02x} ({opcode:3}) | arg {a_val:3} -> std_op {std_op:3}")
 
         i += step
     return bytes(new_code)

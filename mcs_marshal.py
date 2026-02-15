@@ -224,7 +224,7 @@ class McsMarshal:
                 'filename': self.r_object(),
                 'nlocals': self.r_int(),
                 'magic': self.r_int(),
-                'version': 3
+                'version': 4
             }
         elif tag == 111:  # 'o'
             obj = {
@@ -243,7 +243,7 @@ class McsMarshal:
                 'lnotab': self.r_object(),
                 'magic': self.r_int(),
                 'filename': self.r_object(),
-                'version': 3
+                'version': 2
             }
         elif tag == 97:  # 'a'
             obj = {
@@ -262,6 +262,6 @@ class McsMarshal:
                 'name': self.r_object(),
                 'names': self.r_object(),
                 'magic': self.r_int(),
-                'version': 2
+                'version': 3
             }
         return obj

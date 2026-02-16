@@ -264,4 +264,80 @@ class McsMarshal:
                 'magic': self.r_int(),
                 'version': 3
             }
+
+        # Identify and skip the trailing confusion code object in the root module
+        name = obj.get('name')
+        if isinstance(name, bytes):
+            name = name.decode('utf-8', 'ignore')
+
+        version = obj.get('version', 0)
+        
+        if name == '<module>':
+            consts = obj.get('consts')
+            names = obj.get('names')
+            code = obj.get('code')
+            
+            if consts and names and code and len(code) >= 13:
+                # Opcodes for (RETURN_VALUE, LOAD_CONST, MAKE_FUNCTION, STORE_NAME)
+                op_sets = {
+                    1: {'rv': 0x3B, 'lc': 0x5D, 'mf': 0xC6, 'sn': 0x72},
+                    2: {'rv': 0x01, 'lc': 0xDF, 'mf': 0xC2, 'sn': 0x95},
+                    3: {'rv': 0x3C, 'lc': 0xD6, 'mf': 0xD7, 'sn': 0xE4},
+                    4: {'rv': 0x51, 'lc': 0xDE, 'mf': 0xF7, 'sn': 0xC9},
+                }
+                ops = op_sets.get(version)
+                
+                if ops:
+                    # Check instructions from end:
+                    # -13: LOAD_CONST (confusion code obj)
+                    # -10: MAKE_FUNCTION 0
+                    # -7:  STORE_NAME (confusion name)
+                    # -4:  LOAD_CONST (None)
+                    # -1:  RETURN_VALUE
+                    if (len(code) >= 13 and
+                        code[-1] == ops['rv'] and 
+                        code[-4] == ops['lc'] and 
+                        code[-7] == ops['sn'] and 
+                        code[-10] == ops['mf'] and 
+                        code[-13] == ops['lc']):
+                        
+                        conf_const_idx = code[-12] | (code[-11] << 8)
+                        conf_name_idx = code[-6] | (code[-5] << 8)
+                        none_const_idx = code[-3] | (code[-2] << 8)
+                        
+                        # Verify the indices are plausible and the last name is suspicious
+                        if (conf_name_idx == len(names) - 1 and 
+                            none_const_idx < len(consts) and 
+                            consts[none_const_idx] is None):
+                            
+                            conf_name = names[conf_name_idx]
+                            if isinstance(conf_name, bytes):
+                                conf_name = conf_name.decode('utf-8', 'ignore')
+                            
+                            # Garbage name patterns: original_name + random_suffix
+                            garbage_suffixes = [
+                                '_exceptV', 
+                                '_01dVersi0n', 
+                                '_newVersi0n', 
+                                '_furtureVersion', 
+                                '_futureVersion'
+                            ]
+                            is_garbage = any(conf_name.endswith(s) for s in garbage_suffixes)
+                            
+                            if is_garbage:
+                                # It's a match. Remove the confusion function.
+                                # 1. Remove name
+                                l_names = list(names)
+                                l_names.pop()
+                                obj['names'] = tuple(l_names) if isinstance(names, tuple) else l_names
+                                
+                                # 2. Remove constant if it was the last one (usually is)
+                                if conf_const_idx == len(consts) - 1:
+                                    l_consts = list(consts)
+                                    l_consts.pop()
+                                    obj['consts'] = tuple(l_consts) if isinstance(consts, tuple) else l_consts
+                                
+                            # 3. Patch code: strip the 9 bytes of confusion instructions
+                            new_code = bytearray(code)
+                            obj['code'] = bytes(new_code[:-13] + new_code[-4:])
         return obj
